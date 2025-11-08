@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NULL-BIT DITHER (Advanced)</title>
+    
+<link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* THEME: Black, Dark Purple, White */
+            --bg-dark: #111111;
+            --primary-neon: #5a1482; /* Dark Purple */
+            --secondary-neon: #9d4edd; /* Lighter Purple */
+            --accent-yellow: #f0f0f0; /* White (replaces yellow) */
+            --text-light: #f0f0f0;
+            --border-thick: 4px;
+            --border-thin: 2px;
+            --element-spacing: 20px;
+        }
+
+        body {
+            font-family: 'Roboto Mono', monospace;
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            display: grid;
+            grid-template-areas:
+                "header header"
+                "controls original"
+                "controls dithered";
+            grid-template-columns: 360px 1fr;
+            grid-gap: var(--element-spacing);
+            padding: var(--element-spacing);
+            max-width: 1400px;
+            margin: auto;
+            border: var(--border-thin) solid var(--primary-neon);
+            box-shadow: 0 0 20px var(--primary-neon);
+        }
+
+        h1 {
+            grid-area: header;
+            font-family: 'Audiowide', cursive;
+            text-align: center;
+            color: var(--primary-neon);
+            border-bottom: var(--border-thick) solid var(--secondary-neon);
+            padding-bottom: 15px;
+            margin-bottom: var(--element-spacing);
+            text-shadow: 0 0 10px var(--primary-neon);
+        }
+
+        #controls {
+            grid-area: controls;
+            background: #222; /* Slightly lighter than pure black BG */
+            padding: var(--element-spacing);
+            border-radius: 0; /* Brutalist */
+            box-shadow: 0 0 15px var(--secondary-neon);
+            display: flex;
+            flex-direction: column;
+            gap: var(--element-spacing);
+            border: var(--border-thin) solid var(--secondary-neon);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .control-group.row {
+            flex-direction: row;
+            align-items: center;
+            gap: 10px;
+        }
+        .control-group.row input {
+            flex: 1;
+        }
+        .control-group.checkbox-row {
+            flex-direction: row;
+            align-items: center;
+            gap: 10px;
+        }
+        .control-group.checkbox-row input[type="checkbox"] {
+            width: auto;
+            flex-grow: 0;
+            accent-color: var(--primary-neon);
+        }
+        .control-group.checkbox-row label {
+            text-shadow: none;
+            color: var(--text-light);
+            text-transform: none;
+            font-weight: 400;
+        }
+
+
+        label {
+            font-weight: 700;
+            color: var(--primary-neon);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 0 5px var(--primary-neon);
+        }
+
+        select, input[type="file"], input[type="number"], input[type="text"], button, input[type="range"] {
+            width: 100%;
+            padding: 10px;
+            border: var(--border-thin) solid var(--primary-neon);
+            background-color: #000;
+            color: var(--text-light);
+            border-radius: 0;
+            box-sizing: border-box;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.9em;
+            transition: all 0.2s ease-in-out;
+        }
+        
+        select:focus, input[type="number"]:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: var(--secondary-neon);
+            box-shadow: 0 0 8px var(--secondary-neon);
+        }
+
+        input[type="file"] {
+            padding: 5px;
+            color: var(--primary-neon);
+            cursor: pointer;
+        }
+        input[type="file"]::file-selector-button {
+            background-color: var(--primary-neon);
+            color: var(--bg-dark);
+            border: none;
+            padding: 8px 12px;
+            margin-right: 10px;
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        input[type="file"]::file-selector-button:hover {
+            background-color: var(--secondary-neon);
+            color: var(--bg-dark);
+            box-shadow: 0 0 8px var(--secondary-neon);
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            height: 8px;
+            background: #555;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+            padding: 0; /* Override padding */
+        }
+        input[type="range"]:hover {
+            opacity: 1;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--primary-neon);
+            cursor: pointer;
+            border: var(--border-thin) solid var(--text-light);
+            box-shadow: 0 0 5px var(--primary-neon);
+            transition: all 0.2s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: var(--secondary-neon);
+            box-shadow: 0 0 8px var(--secondary-neon);
+        }
+
+        button {
+            background-color: var(--primary-neon);
+            color: var(--bg-dark);
+            font-weight: 700;
+            border: var(--border-thin) solid var(--primary-neon);
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: background-color 0.2s, color 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        button:hover {
+            background-color: var(--secondary-neon);
+            color: var(--bg-dark);
+            box-shadow: 0 0 10px var(--secondary-neon);
+        }
+        /* Glitch effect for buttons */
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            transition: left 0.3s ease-out;
+        }
+        button:hover::before {
+            left: 100%;
+        }
+
+        /* --- STYLES FOR SAVE GROUP --- */
+        #save-group {
+            display: flex;
+            border: var(--border-thin) solid var(--primary-neon);
+            background-color: #000;
+            padding: 0;
+            gap: 0;
+        }
+        #save-group #filename-input {
+            border: none;
+            flex-grow: 1; /* Make it fill the space */
+            width: auto; /* Override 100% width */
+            background-color: transparent;
+        }
+        #save-group #save-button {
+            border: none;
+            border-left: var(--border-thin) solid var(--primary-neon);
+            width: auto; /* Override 100% width */
+            flex-shrink: 0; /* Don't let it shrink */
+            border-radius: 0;
+        }
+        /* --- END STYLES --- */
+
+
+        canvas {
+            max-width: 100%;
+            border: var(--border-thin) solid var(--primary-neon);
+            background-color: #000;
+            box-shadow: 0 0 10px var(--primary-neon);
+            border-radius: 0;
+            image-rendering: pixelated; /* Sharp pixels */
+        }
+        #original-container, #dithered-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        #original-container {
+            grid-area: original;
+        }
+        #dithered-container {
+            grid-area: dithered;
+        }
+        h3 {
+            margin-top: 0;
+            color: var(--accent-yellow); /* This is now white */
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 0 5px var(--accent-yellow);
+            text-align: center;
+            padding-bottom: 5px;
+            border-bottom: 1px dashed var(--accent-yellow);
+        }
+
+        #matrix-controls, #diffusion-controls, #adjustment-controls {
+            display: none; /* Hidden by default */
+        }
+        .expert-controls {
+            display: none; /* Hidden by default */
+            padding-left: 10px;
+            border-left: 2px solid var(--secondary-neon);
+            margin-top: 15px;
+        }
+        
+        #diffusion-strength-value, #brightness-value, #contrast-value, #hue-value, #saturation-value, #bayer-intensity-value, #gamma-value, #pixel-scale-value, #noise-value {
+            font-weight: bold;
+            color: var(--accent-yellow); /* This is now white */
+            min-width: 40px;
+            text-align: right;
+            padding-left: 5px;
+        }
+        
+        hr {
+            border: none;
+            border-top: var(--border-thin) dashed var(--secondary-neon);
+            margin: var(--element-spacing) 0;
+        }
+
+        #loading-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--primary-neon);
+            font-size: 1.2em;
+            font-weight: bold;
+            text-shadow: 0 0 8px var(--primary-neon);
+            display: none; /* Hidden by default */
+        }
+        #loading-message::after {
+            content: '.';
+            animation: dot-animation 1s infinite steps(3);
+        }
+
+        @keyframes dot-animation {
+            0% { content: '.'; }
+            33% { content: '..'; }
+            66% { content: '...'; }
+            100% { content: '.'; }
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            min-height: 150px; /* Placeholder height */
+            background-color: #000;
+            border: var(--border-thin) solid var(--primary-neon);
+            box-shadow: 0 0 10px var(--primary-neon);
+            display: flex; /* To center loading message */
+            align-items: center;
+            justify-content: center;
+        }
+        .canvas-wrapper canvas {
+            display: block; /* Remove extra space below canvas */
+        }
+        .canvas-wrapper.empty {
+             background-color: #000;
+             border: var(--border-thin) dashed var(--accent-yellow);
+             color: var(--accent-yellow);
+             font-size: 1.2em;
+             text-align: center;
+             display: flex;
+             align-items: center;
+             justify-content: center;
+        }
+        .canvas-wrapper.empty::before {
+            content: "NO IMAGE LOADED";
+            font-family: 'Audiowide', cursive;
+            text-shadow: 0 0 5px var(--accent-yellow);
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>NULL-BIT DITHER</h1>
+
+    <div id="controls">
+        <div class="control-group">
+            <label for="file-input">1. SELECT IMAGE</label>
+            <input type="file" id="file-input" accept="image/*">
+        </div>
+        
+        <div class="control-group checkbox-row">
+            <input type="checkbox" id="expert-mode-toggle">
+            <label for="expert-mode-toggle">EXPERT MODE</label>
+        </div>
+        
+        <div class="control-group">
+            <label for="preset-select">PRESET PROFILE</label>
+            <select id="preset-select">
+                <option value="custom">-- CUSTOM --</option>
+                <option value="vaporwave">VAPORWAVE</option>
+                <option value="pc98">PC-98</option>
+                <option value="pc88">PC-88</option>
+                <option value="msx2">MSX2</option>
+                <option value="c64">COMMODORE 64</option>
+                <option value="amiga_ocs">AMIGA OCS</option>
+                <option value="genesis">SEGA GENESIS</option>
+                <option value="zx_spectrum">ZX SPECTRUM</option>
+                <option value="apple2">APPLE II</option>
+                <option value="fm7">FM-7</option>
+                <option value="gameboy">GAME BOY</option>
+                <option value="cga">CGA</option>
+                <option value="web_safe_216">WEB SAFE 216</option>
+                <option value="greyscale">GREYSCALE</option>
+                <option value="1bit">1-BIT</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="dither-type-select">DITHER ALGORITHM</label>
+            <select id="dither-type-select">
+                <option value="floyd-steinberg">FLOYD-STEINBERG</option>
+                <option value="stucki">STUCKI</option>
+                <option value="atkinson">ATKINSON</option>
+                <option value="jarvis-judice-ninke">JARVIS, JUDICE, NINKE</option>
+                <option value="burkes">BURKES</option>
+                <option value="sierra-2">SIERRA-2</option>
+                <option value="bayer">ORDERED (BAYER)</option>
+                <option value="random">RANDOM NOISE</option>
+                <option value="none">NONE (CLOSEST COLOR)</option>
+            </select>
+        </div>
+
+        <div class="control-group" id="diffusion-controls">
+            <label for="diffusion-strength">DIFFUSION STRENGTH</label>
+            <div class="control-group row">
+                <input type="range" id="diffusion-strength" min="0" max="1.5" value="1.0" step="0.05">
+                <span id="diffusion-strength-value">1.00</span>
+            </div>
+            <div class="control-group checkbox-row">
+                <input type="checkbox" id="serpentine-scanning" checked>
+                <label for="serpentine-scanning">Use Serpentine Scanning</label>
+            </div>
+        </div>
+
+        <div class="control-group" id="matrix-controls">
+            <label for="matrix-width">MATRIX WIDTH</label>
+            <input type="number" id="matrix-width" value="4" min="2" max="8" step="1">
+            <label for="matrix-height">MATRIX HEIGHT</label>
+            <input type="number" id="matrix-height" value="4" min="2" max="8" step="1">
+            <label for="bayer-intensity">BAYER INTENSITY</label>
+            <div class="control-group row">
+                <input type="range" id="bayer-intensity" min="0" max="128" value="64" step="1">
+                <span id="bayer-intensity-value">64</span>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <label for="palette-select">COLOR PALETTE</label>
+            <select id="palette-select">
+                <option value="fullcolor">FULL COLOR (NO REDUCTION)</option>
+                <option value="dark_purple">DARK PURPLE (3 COLOR)</option>
+                <option value="greyscale">GREYSCALE (8-BIT)</option>
+                <option value="1bit">1-BIT (BLACK & WHITE)</option>
+                <option value="vaporwave">VAPORWAVE (5 COLOR)</option>
+                <option value="pc98">PC-98 (16 COLOR)</option>
+                <option value_a="pc88">PC-88 (8 COLOR)</option>
+                <option value="msx2">MSX2 (16 COLOR)</option>
+                <option value="c64">C64 (16 COLOR)</option>
+                <option value="amiga_ocs">AMIGA OCS (32 COLOR)</option>
+                <option value="genesis">GENESIS (64 COLOR)</option>
+                <option value="zx_spectrum">ZX SPECTRUM (15 COLOR)</option>
+                <option value="apple2">APPLE II (6 COLOR)</option>
+                <option value="fm7">FM-7 (8 COLOR)</option>
+                <option value="gameboy">GAME BOY (4 COLOR)</option>
+                <option value="cga">CGA (4 COLOR)</option>
+                <option value="web_safe_216">WEB SAFE (216 COLOR)</option>
+            </select>
+        </div>
+
+        <hr>
+
+        <div class="control-group" id="adjustment-controls">
+            <label>IMAGE ADJUSTMENTS</label>
+            <div class="control-group row">
+                <label for="gamma-level">GAMMA</label>
+                <input type="range" id="gamma-level" min="50" max="250" value="100" step="5">
+                <span id="gamma-value">1.00</span>
+            </div>
+            <div class="control-group row">
+                <label for="brightness-level">BRIGHTNESS</label>
+                <input type="range" id="brightness-level" min="0" max="200" value="100" step="1">
+                <span id="brightness-value">100%</span>
+            </div>
+            <div class="control-group row">
+                <label for="contrast-level">CONTRAST</label>
+                <input type="range" id="contrast-level" min="0" max="200" value="100" step="1">
+                <span id="contrast-value">100%</span>
+            </div>
+            <div class="control-group row">
+                <label for="saturation-level">SATURATION</label>
+                <input type="range" id="saturation-level" min="0" max="200" value="100" step="1">
+                <span id="saturation-value">100%</span>
+            </div>
+            <div class="control-group row">
+                <label for="hue-rotation">HUE ROTATION</label>
+                <input type="range" id="hue-rotation" min="0" max="360" value="0" step="1">
+                <span id="hue-value">0°</span>
+            </div>
+            
+            <div class="expert-controls">
+                <div class="control-group">
+                    <label for="noise-level">PRE-DITHER NOISE</label>
+                    <div class="control-group row">
+                        <input type="range" id="noise-level" min="0" max="32" value="0" step="1">
+                        <span id="noise-value">0</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label for="greyscale-method">GREYSCALE METHOD</label>
+                    <select id="greyscale-method">
+                        <option value="luminance">LUMINANCE (PERCEPTUAL)</option>
+                        <option value="average">AVERAGE (R+G+B)/3</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <hr>
+        
+        <div class="control-group">
+            <label for="pixel-scale">PIXEL SCALE</label>
+            <div class="control-group row">
+                <input type="range" id="pixel-scale" min="1" max="5" value="1" step="1">
+                <span id="pixel-scale-value">1x</span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label for="filename-input">SAVE DITHERED IMAGE AS:</label>
+            <div class="control-group row" id="save-group">
+                <input type="text" id="filename-input" value="dithered-output.png">
+                <button id="save-button">DOWNLOAD</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="original-container" class="canvas-wrapper empty">
+        <h3>ORIGINAL SIGNAL</h3>
+        <canvas id="canvas-original"></canvas>
+        <div id="loading-message">PROCESSING</div>
+    </div>
+
+    <div id="dithered-container" class="canvas-wrapper empty">
+        <h3>DITHERED OUTPUT</h3>
+        <canvas id="canvas-dithered"></canvas>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const fileInput = document.getElementById('file-input');
+            const expertModeToggle = document.getElementById('expert-mode-toggle');
+            const expertControls = document.querySelectorAll('.expert-controls');
+            const presetSelect = document.getElementById('preset-select');
+            const ditherTypeSelect = document.getElementById('dither-type-select');
+            
+            const matrixControls = document.getElementById('matrix-controls');
+            const matrixWidthInput = document.getElementById('matrix-width');
+            const matrixHeightInput = document.getElementById('matrix-height');
+            const bayerIntensitySlider = document.getElementById('bayer-intensity');
+            const bayerIntensityValue = document.getElementById('bayer-intensity-value');
+            
+            const diffusionControls = document.getElementById('diffusion-controls');
+            const diffusionStrengthSlider = document.getElementById('diffusion-strength');
+            const diffusionStrengthValue = document.getElementById('diffusion-strength-value');
+            const serpentineCheckbox = document.getElementById('serpentine-scanning');
+
+            const paletteSelect = document.getElementById('palette-select');
+            
+            const filenameInput = document.getElementById('filename-input');
+            const saveButton = document.getElementById('save-button');
+            
+            const originalCanvas = document.getElementById('canvas-original');
+            const ditheredCanvas = document.getElementById('canvas-dithered');
+            const originalCtx = originalCanvas.getContext('2d', { willReadFrequently: true });
+            const ditheredCtx = ditheredCanvas.getContext('2d', { willReadFrequently: true });
+            
+            // In-memory canvas for processing
+            const processingCanvas = document.createElement('canvas');
+            const processingCtx = processingCanvas.getContext('2d', { willReadFrequently: true });
+
+            const originalContainer = document.getElementById('original-container');
+            const ditheredContainer = document.getElementById('dithered-container');
+            const loadingMessage = document.getElementById('loading-message');
+
+            // Adjustment Controls
+            const adjustmentControls = document.getElementById('adjustment-controls');
+            const gammaLevel = document.getElementById('gamma-level');
+            const gammaValue = document.getElementById('gamma-value');
+            const brightnessLevel = document.getElementById('brightness-level');
+            const brightnessValue = document.getElementById('brightness-value');
+            const contrastLevel = document.getElementById('contrast-level');
+            const contrastValue = document.getElementById('contrast-value');
+            const saturationLevel = document.getElementById('saturation-level');
+            const saturationValue = document.getElementById('saturation-value');
+            const hueRotation = document.getElementById('hue-rotation');
+            const hueValue = document.getElementById('hue-value');
+            const pixelScaleSlider = document.getElementById('pixel-scale');
+            const pixelScaleValue = document.getElementById('pixel-scale-value');
+
+            // Expert Controls
+            const noiseLevel = document.getElementById('noise-level');
+            const noiseValue = document.getElementById('noise-value');
+            const greyscaleMethod = document.getElementById('greyscale-method');
+
+            let originalImage = null; // Stores the raw uploaded image
+            let gammaLUT = new Uint8Array(256); // Gamma Look-Up Table
+            buildGammaLUT(1.0); // Initial build
+
+            // --- Palettes ---
+            const PALETTES = {
+                '1bit': [[0, 0, 0], [255, 255, 255]],
+                'dark_purple': [[0, 0, 0], [90, 20, 130], [255, 255, 255]],
+                'greyscale': [
+                    [0, 0, 0], [36, 36, 36], [72, 72, 72], [109, 109, 109],
+                    [145, 145, 145], [182, 182, 182], [218, 218, 218], [255, 255, 255]
+                ],
+                'gameboy': [[15, 56, 15], [48, 98, 48], [139, 172, 15], [155, 188, 15]],
+                'cga': [[0, 0, 0], [85, 255, 255], [255, 85, 255], [255, 255, 255]],
+                'pc88': [
+                    [0, 0, 0], [0, 0, 255], [255, 0, 0], [255, 0, 255],
+                    [0, 255, 0], [0, 255, 255], [255, 255, 0], [255, 255, 255]
+                ],
+                'pc98': [
+                    [0, 0, 0], [0, 0, 170], [0, 170, 0], [0, 170, 170],
+                    [170, 0, 0], [170, 0, 170], [170, 85, 0], [170, 170, 170],
+                    [85, 85, 85], [85, 85, 255], [85, 255, 85], [85, 255, 255],
+                    [255, 85, 85], [255, 85, 255], [255, 255, 85], [255, 255, 255]
+                ],
+                'vaporwave': [
+                    [255, 119, 252], [255, 234, 133], [0, 255, 211],
+                    [14, 19, 43], [255, 163, 119]
+                ],
+                'msx2': [
+                    [0, 0, 0], [1, 1, 1], [62, 182, 62], [116, 208, 116],
+                    [89, 89, 231], [128, 116, 247], [182, 94, 94], [62, 219, 219],
+                    [231, 110, 110], [255, 137, 137], [214, 214, 214], [228, 228, 228],
+                    [89, 203, 89], [182, 94, 208], [182, 182, 182], [255, 255, 255]
+                ],
+                'c64': [
+                    [0, 0, 0], [255, 255, 255], [136, 0, 0], [170, 255, 238],
+                    [204, 68, 204], [0, 204, 85], [0, 0, 170], [238, 238, 119],
+                    [221, 136, 85], [102, 68, 0], [255, 119, 119], [51, 51, 51],
+                    [119, 119, 119], [170, 255, 102], [0, 136, 255], [187, 187, 187]
+                ],
+                'amiga_ocs': [
+                    [0, 0, 0], [0, 0, 170], [0, 170, 0], [0, 170, 170],
+                    [170, 0, 0], [170, 0, 170], [170, 85, 0], [170, 170, 170],
+                    [85, 85, 85], [85, 85, 255], [85, 255, 85], [85, 255, 255],
+                    [255, 85, 85], [255, 85, 255], [255, 255, 85], [255, 255, 255],
+                    [0, 0, 85], [0, 85, 0], [0, 85, 85], [0, 85, 170],
+                    [0, 170, 85], [0, 170, 255], [85, 0, 0], [85, 0, 85],
+                    [85, 0, 170], [85, 0, 255], [85, 85, 0], [85, 85, 170],
+                    [85, 170, 0], [85, 170, 85], [85, 170, 170], [85, 170, 255]
+                ],
+                'genesis': [ // 64-color palette (4-bit per channel, 0-14, scaled to 0-255)
+                    [0, 0, 0], [0, 0, 36], [0, 0, 73], [0, 0, 109],
+                    [0, 0, 146], [0, 0, 182], [0, 0, 219], [0, 0, 255],
+                    [36, 36, 36], [36, 36, 73], [36, 36, 109], [36, 36, 146],
+                    [36, 36, 182], [36, 36, 219], [36, 36, 255], [73, 73, 73],
+                    [73, 73, 109], [73, 73, 146], [73, 73, 182], [73, 73, 219],
+                    [73, 73, 255], [109, 109, 109], [109, 109, 146], [109, 109, 182],
+                    [109, 109, 219], [109, 109, 255], [146, 146, 146], [146, 146, 182],
+                    [146, 146, 219], [146, 146, 255], [182, 182, 182], [182, 182, 219],
+                    [182, 182, 255], [219, 219, 219], [219, 219, 255], [255, 255, 255],
+                    [0, 36, 0], [0, 73, 0], [0, 109, 0], [0, 146, 0],
+                    [0, 182, 0], [0, 219, 0], [0, 255, 0], [36, 0, 0],
+                    [73, 0, 0], [109, 0, 0], [146, 0, 0], [182, 0, 0],
+                    [219, 0, 0], [255, 0, 0], [255, 255, 0], [255, 219, 0],
+                    [255, 182, 0], [255, 146, 0], [255, 109, 0], [255, 73, 0],
+                    [255, 36, 0], [255, 0, 36], [255, 0, 73], [255, 0, 109],
+                    [255, 0, 146], [255, 0, 182], [255, 0, 219], [255, 0, 255]
+                ],
+                'zx_spectrum': [
+                    [0, 0, 0], [0, 0, 219], [219, 0, 0], [219, 0, 219],
+                    [0, 219, 0], [0, 219, 219], [219, 219, 0], [219, 219, 219],
+                    [0, 0, 0], [0, 0, 255], [255, 0, 0], [255, 0, 255],
+                    [0, 255, 0], [0, 255, 255], [255, 255, 0], [255, 255, 255]
+                ],
+                'apple2': [
+                    [0, 0, 0], [255, 255, 255], [255, 42, 62], [62, 214, 62],
+                    [62, 102, 255], [255, 92, 214]
+                ],
+                'fm7': [
+                    [0, 0, 0], [255, 255, 255], [255, 0, 0], [0, 255, 0],
+                    [0, 0, 255], [255, 255, 0], [0, 255, 255], [255, 0, 255]
+                ],
+                'web_safe_216': [] // Will be generated
+            };
+            
+            // Generate Web Safe 216 Palette
+            const webSafeValues = [0, 51, 102, 153, 204, 255];
+            for (let r of webSafeValues) {
+                for (let g of webSafeValues) {
+                    for (let b of webSafeValues) {
+                        PALETTES['web_safe_216'].push([r, g, b]);
+                    }
+                }
+            }
+            
+
+            // --- Bayer Matrices ---
+            const BAYER_MATRICES = {
+                2: [[0, 2], [3, 1]],
+                4: [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]],
+                8: [
+                    [0, 32, 8, 40, 2, 34, 10, 42], [48, 16, 56, 24, 50, 18, 58, 26],
+                    [12, 44, 4, 36, 14, 46, 6, 38], [60, 28, 52, 20, 62, 30, 54, 22],
+                    [3, 35, 11, 43, 1, 33, 9, 41], [51, 19, 59, 27, 49, 17, 57, 25],
+                    [15, 47, 7, 39, 13, 45, 5, 37], [63, 31, 55, 23, 61, 29, 53, 21]
+                ]
+            };
+            
+            // --- Event Listeners ---
+            fileInput.addEventListener('change', handleImageLoad);
+            presetSelect.addEventListener('change', handlePresetChange);
+            ditherTypeSelect.addEventListener('change', handleDitherTypeChange);
+            saveButton.addEventListener('click', saveImage);
+            
+            expertModeToggle.addEventListener('change', () => {
+                const showExpert = expertModeToggle.checked;
+                expertControls.forEach(el => {
+                    el.style.display = showExpert ? 'block' : 'none';
+                });
+            });
+            
+            diffusionStrengthSlider.addEventListener('input', () => {
+                diffusionStrengthValue.textContent = parseFloat(diffusionStrengthSlider.value).toFixed(2);
+                presetSelect.value = 'custom';
+                if (originalImage) processImage();
+            });
+            
+            bayerIntensitySlider.addEventListener('input', () => {
+                bayerIntensityValue.textContent = bayerIntensitySlider.value;
+                presetSelect.value = 'custom';
+                if (originalImage) processImage();
+            });
+
+            // Adjustments listeners
+            [gammaLevel, brightnessLevel, contrastLevel, saturationLevel, hueRotation, pixelScaleSlider].forEach(el => {
+                el.addEventListener('input', () => {
+                    const gammaVal = parseFloat(gammaLevel.value) / 100;
+                    gammaValue.textContent = gammaVal.toFixed(2);
+                    brightnessValue.textContent = `${brightnessLevel.value}%`;
+                    contrastValue.textContent = `${contrastLevel.value}%`;
+                    saturationValue.textContent = `${saturationLevel.value}%`;
+                    hueValue.textContent = `${hueRotation.value}°`;
+                    pixelScaleValue.textContent = `${pixelScaleSlider.value}x`;
+                    
+                    if (el === gammaLevel) buildGammaLUT(gammaVal); // Rebuild LUT
+                    
+                    presetSelect.value = 'custom';
+                    if (originalImage) processImage();
+                });
+            });
+
+            // Any change in dithering options re-processes the image
+            const controlsToMonitor = [
+                ditherTypeSelect, 
+                matrixWidthInput, 
+                matrixHeightInput, 
+                paletteSelect,
+                serpentineCheckbox,
+                noiseLevel,
+                greyscaleMethod
+            ];
+            
+            controlsToMonitor.forEach(el => {
+                el.addEventListener('input', () => { // Use input for noise slider
+                    noiseValue.textContent = noiseLevel.value;
+                    presetSelect.value = 'custom';
+                    if (originalImage) processImage();
+                });
+            });
+            
+            // --- UI Handlers ---
+            function showLoading() {
+                loadingMessage.style.display = 'block';
+                originalContainer.classList.remove('empty');
+                ditheredContainer.classList.remove('empty');
+            }
+
+            function hideLoading() {
+                loadingMessage.style.display = 'none';
+            }
+
+            function handleImageLoad(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                showLoading();
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    originalImage = new Image();
+                    originalImage.onload = () => {
+                        originalCanvas.width = originalImage.width;
+                        originalCanvas.height = originalImage.height;
+                        
+                        processingCanvas.width = originalImage.width;
+                        processingCanvas.height = originalImage.height;
+                        
+                        originalCtx.clearRect(0, 0, originalCanvas.width, originalCanvas.height);
+                        originalCtx.drawImage(originalImage, 0, 0);
+
+                        // Reset adjustment controls
+                        gammaLevel.value = 100;
+                        brightnessLevel.value = 100;
+                        contrastLevel.value = 100;
+                        saturationLevel.value = 100;
+                        hueRotation.value = 0;
+                        pixelScaleSlider.value = 1;
+                        noiseLevel.value = 0;
+                        
+                        gammaValue.textContent = '1.00';
+                        brightnessValue.textContent = '100%';
+                        contrastValue.textContent = '100%';
+                        saturationValue.textContent = '100%';
+                        hueValue.textContent = '0°';
+                        pixelScaleValue.textContent = '1x';
+                        noiseValue.textContent = '0';
+                        
+                        serpentineCheckbox.checked = true;
+                        bayerIntensitySlider.value = 64;
+                        bayerIntensityValue.textContent = '64';
+                        
+                        buildGammaLUT(1.0);
+                        processImage();
+                        hideLoading();
+                    };
+                    originalImage.onerror = () => {
+                        console.error("Failed to load image.");
+                        hideLoading();
+                        originalImage = null;
+                    };
+                    originalImage.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            function handlePresetChange() {
+                const preset = presetSelect.value;
+                if (preset === 'custom') return;
+                
+                let dither = 'floyd-steinberg';
+                let palette = '1bit';
+                let strength = 1.0;
+                let bayer = 64;
+                let gamma = 1.0;
+
+                switch (preset) {
+                    case 'vaporwave': dither = 'atkinson'; palette = 'vaporwave'; strength = 1.0; gamma = 1.0; break;
+                    case 'pc98': dither = 'bayer'; palette = 'pc98'; bayer = 64; gamma = 1.2; break;
+                    case 'pc88': dither = 'floyd-steinberg'; palette = 'pc88'; strength = 1.0; gamma = 1.2; break;
+                    case 'msx2': dither = 'floyd-steinberg'; palette = 'msx2'; strength = 0.9; gamma = 1.1; break;
+                    case 'c64': dither = 'floyd-steinberg'; palette = 'c64'; strength = 0.8; gamma = 1.0; break;
+                    case 'amiga_ocs': dither = 'floyd-steinberg'; palette = 'amiga_ocs'; strength = 1.0; gamma = 1.0; break;
+                    case 'genesis': dither = 'floyd-steinberg'; palette = 'genesis'; strength = 1.0; gamma = 1.0; break;
+                    case 'zx_spectrum': dither = 'bayer'; palette = 'zx_spectrum'; bayer = 48; gamma = 1.0; break;
+                    case 'apple2': dither = 'bayer'; palette = 'apple2'; bayer = 64; gamma = 1.0; break;
+                    case 'fm7': dither = 'floyd-steinberg'; palette = 'fm7'; strength = 1.0; gamma = 1.0; break;
+                    case 'gameboy': dither = 'bayer'; palette = 'gameboy'; bayer = 32; gamma = 0.8; break;
+                    case 'cga': dither = 'bayer'; palette = 'cga'; bayer = 64; gamma = 1.0; break;
+                    case 'web_safe_216': dither = 'stucki'; palette = 'web_safe_216'; strength = 1.0; gamma = 1.0; break;
+                    case 'greyscale': dither = 'stucki'; palette = 'greyscale'; strength = 1.0; gamma = 1.0; break;
+                    case '1bit': dither = 'floyd-steinberg'; palette = '1bit'; strength = 0.9; gamma = 1.0; break;
+                }
+                
+                // Set values
+                ditherTypeSelect.value = dither;
+                paletteSelect.value = palette;
+                diffusionStrengthSlider.value = strength;
+                bayerIntensitySlider.value = bayer;
+                gammaLevel.value = gamma * 100;
+                
+                // Reset other adjustments
+                brightnessLevel.value = 100; contrastLevel.value = 100; saturationLevel.value = 100; hueRotation.value = 0;
+                pixelScaleSlider.value = 1;
+                noiseLevel.value = 0;
+                
+                // Update UI text
+                diffusionStrengthValue.textContent = strength.toFixed(2);
+                bayerIntensityValue.textContent = bayer;
+                gammaValue.textContent = gamma.toFixed(2);
+                brightnessValue.textContent = '100%';
+                contrastValue.textContent = '100%';
+                saturationValue.textContent = '100%';
+                hueValue.textContent = '0°';
+                pixelScaleValue.textContent = '1x';
+                noiseValue.textContent = '0';
+                
+                buildGammaLUT(gamma);
+                handleDitherTypeChange();
+                if (originalImage) processImage();
+            }
+
+            function handleDitherTypeChange() {
+                const ditherType = ditherTypeSelect.value;
+                const diffusionTypes = ['floyd-steinberg', 'stucki', 'atkinson', 'jarvis-judice-ninke', 'burkes', 'sierra-2'];
+                
+                if (ditherType === 'bayer') {
+                    matrixControls.style.display = 'flex';
+                    diffusionControls.style.display = 'none';
+                } else if (diffusionTypes.includes(ditherType)) {
+                    matrixControls.style.display = 'none';
+                    diffusionControls.style.display = 'flex';
+                } else {
+                    matrixControls.style.display = 'none';
+                    diffusionControls.style.display = 'none';
+                }
+            }
+            
+            function saveImage() {
+                if (!originalImage) {
+                    alert('No dithered image to save. Please upload an image first.');
+                    return;
+                }
+                let filename = filenameInput.value || 'dithered-output.png';
+                if (!filename.toLowerCase().endsWith('.png')) {
+                    filename += '.png';
+                }
+                // Use the scaled canvas (ditheredCanvas) for saving
+                const dataURL = ditheredCanvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.href = dataURL;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            // --- Core Image Processing ---
+            async function processImage() {
+                if (!originalImage) {
+                    originalContainer.classList.add('empty');
+                    ditheredContainer.classList.add('empty');
+                    return;
+                }
+                showLoading();
+
+                // 1. Get settings
+                const settings = {
+                    ditherType: ditherTypeSelect.value,
+                    paletteName: paletteSelect.value,
+                    matrixWidth: parseInt(matrixWidthInput.value) || 4,
+                    matrixHeight: parseInt(matrixHeightInput.value) || 4,
+                    diffusionStrength: parseFloat(diffusionStrengthSlider.value),
+                    serpentine: serpentineCheckbox.checked,
+                    bayerIntensity: parseInt(bayerIntensitySlider.value),
+                    brightness: parseInt(brightnessLevel.value),
+                    contrast: parseInt(contrastLevel.value),
+                    saturation: parseInt(saturationLevel.value),
+                    hue: parseInt(hueRotation.value),
+                    pixelScale: parseInt(pixelScaleSlider.value),
+                    noise: parseInt(noiseLevel.value),
+                    greyscaleMethod: greyscaleMethod.value
+                };
+                
+                // 2. Draw original and apply adjustments
+                processingCtx.clearRect(0, 0, processingCanvas.width, processingCanvas.height);
+                processingCtx.drawImage(originalImage, 0, 0);
+                let imageData = processingCtx.getImageData(0, 0, processingCanvas.width, processingCanvas.height);
+                
+                const palette = PALETTES[settings.paletteName] || [];
+                applyAdjustments(imageData, settings, palette);
+                
+                // Draw adjusted image to the "Original" canvas
+                originalCtx.putImageData(imageData, 0, 0);
+
+                // 3. Clone adjusted data for dithering
+                const ditheredData = new ImageData(
+                    new Uint8ClampedArray(imageData.data),
+                    imageData.width,
+                    imageData.height
+                );
+
+                // 4. Apply selected algorithm
+                const diffusionTypes = ['floyd-steinberg', 'stucki', 'atkinson', 'jarvis-judice-ninke', 'burkes', 'sierra-2'];
+                if (diffusionTypes.includes(settings.ditherType)) {
+                    applyErrorDiffusion(ditheredData, palette, settings.ditherType, settings.diffusionStrength, settings.serpentine);
+                } else if (settings.ditherType === 'bayer') {
+                    applyOrderedDither(ditheredData, palette, settings.matrixWidth, settings.matrixHeight, settings.bayerIntensity);
+                } else if (settings.ditherType === 'random') {
+                    applyRandomDither(ditheredData, palette); // Random uses noise setting internally
+                } else {
+                    applyClosestColor(ditheredData, palette);
+                }
+
+                // 5. Put modified 1x data back onto processing canvas
+                processingCtx.putImageData(ditheredData, 0, 0);
+                
+                // 6. Scale 1x processing canvas to final dithered canvas
+                ditheredCanvas.width = processingCanvas.width * settings.pixelScale;
+                ditheredCanvas.height = processingCanvas.height * settings.pixelScale;
+                
+                ditheredCtx.imageSmoothingEnabled = false;
+                ditheredCtx.clearRect(0, 0, ditheredCanvas.width, ditheredCanvas.height);
+                ditheredCtx.drawImage(processingCanvas, 0, 0, ditheredCanvas.width, ditheredCanvas.height);
+
+                hideLoading();
+            }
+
+            // --- Gamma & Adjustments ---
+            function buildGammaLUT(gamma) {
+                const gammaVal = 1 / gamma;
+                for (let i = 0; i < 256; i++) {
+                    gammaLUT[i] = Math.pow(i / 255, gammaVal) * 255;
+                }
+            }
+            
+            function isGreyscale(palette) {
+                if (!palette || palette.length === 0) return false;
+                if (palette === PALETTES['greyscale'] || palette === PALETTES['1bit']) return true;
+                return palette.every(c => c[0] === c[1] && c[1] === c[2]);
+            }
+
+            function applyAdjustments(imageData, settings, palette) {
+                const data = imageData.data;
+                const factorB = settings.brightness / 100;
+                const factorC = settings.contrast / 100;
+                const factorS = settings.saturation / 100;
+                const angle = settings.hue * Math.PI / 180;
+                const noise = settings.noise;
+                
+                const cosA = Math.cos(angle);
+                const sinA = Math.sin(angle);
+                const hueMatrix = [
+                    (0.2126 + cosA * (1 - 0.2126) + sinA * (-0.2126)), (0.7152 + cosA * (-0.7152) + sinA * (-0.7152)), (0.0722 + cosA * (-0.0722) + sinA * (0.9278)),
+                    (0.2126 + cosA * (-0.2126) + sinA * (0.1436)), (0.7152 + cosA * (1 - 0.7152) + sinA * (0.1403)), (0.0722 + cosA * (-0.0722) + sinA * (-0.2839)),
+                    (0.2126 + cosA * (-0.2126) + sinA * (-0.7874)), (0.7152 + cosA * (-0.7152) + sinA * (0.1983)), (0.0722 + cosA * (1 - 0.0722) + sinA * (0.0722))
+                ];
+                
+                const applyGrey = isGreyscale(palette);
+
+                for (let i = 0; i < data.length; i += 4) {
+                    // 1. Gamma
+                    let r = gammaLUT[data[i]];
+                    let g = gammaLUT[data[i+1]];
+                    let b = gammaLUT[data[i+2]];
+                    
+                    // 2. Greyscale (if applicable)
+                    if (applyGrey) {
+                        let grey;
+                        if (settings.greyscaleMethod === 'average') {
+                            grey = (r + g + b) / 3;
+                        } else { // 'luminance'
+                            grey = 0.299 * r + 0.587 * g + 0.114 * b;
+                        }
+                        r = g = b = grey;
+                    }
+
+                    // 3. Brightness
+                    r *= factorB; g *= factorB; b *= factorB;
+
+                    // 4. Contrast
+                    r = ((r - 128) * factorC) + 128;
+                    g = ((g - 128) * factorC) + 128;
+                    b = ((b - 128) * factorC) + 128;
+
+                    // 5. Saturation (skip if we already applied greyscale)
+                    if (!applyGrey) {
+                        const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+                        r = luma * (1 - factorS) + r * factorS;
+                        g = luma * (1 - factorS) + g * factorS;
+                        b = luma * (1 - factorS) + b * factorS;
+                    }
+                    
+                    // 6. Hue (skip if greyscale)
+                    if (settings.hue !== 0 && !applyGrey) {
+                        const dr = r * hueMatrix[0] + g * hueMatrix[1] + b * hueMatrix[2];
+                        const dg = r * hueMatrix[3] + g * hueMatrix[4] + b * hueMatrix[5];
+                        const db = r * hueMatrix[6] + g * hueMatrix[7] + b * hueMatrix[8];
+                        r = dr; g = dg; b = db;
+                    }
+                    
+                    // 7. Pre-Dither Noise
+                    if (noise > 0) {
+                        const n = (Math.random() - 0.5) * noise;
+                        r += n; g += n; b += n;
+                    }
+
+                    // 8. Clamp
+                    data[i] = Math.min(255, Math.max(0, r));
+                    data[i+1] = Math.min(255, Math.max(0, g));
+                    data[i+2] = Math.min(255, Math.max(0, b));
+                }
+            }
+
+
+            // --- Dithering Algorithms ---
+            
+            function applyClosestColor(imageData, palette) {
+                if (!palette) return;
+                const data = imageData.data;
+                for (let i = 0; i < data.length; i += 4) {
+                    const newColor = findClosestColor([data[i], data[i+1], data[i+2]], palette);
+                    data[i] = newColor[0]; data[i+1] = newColor[1]; data[i+2] = newColor[2];
+                }
+            }
+            
+            function applyRandomDither(imageData, palette) {
+                if (!palette) return;
+                const data = imageData.data;
+                // Random dither uses the "Noise" slider, but applies it *after* quantization
+                const noise = parseInt(noiseLevel.value) * 2; // Make it stronger for this mode
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i] + (Math.random() - 0.5) * noise;
+                    const g = data[i+1] + (Math.random() - 0.5) * noise;
+                    const b = data[i+2] + (Math.random() - 0.5) * noise;
+                    
+                    const newColor = findClosestColor([r, g, b], palette);
+                    data[i] = newColor[0]; data[i+1] = newColor[1]; data[i+2] = newColor[2];
+                }
+            }
+
+            function applyErrorDiffusion(imageData, palette, ditherType, strength, serpentine) {
+                if (!palette) return;
+                
+                const data = imageData.data;
+                const width = imageData.width;
+                const height = imageData.height;
+                const dataCopy = new Float32Array(data.length);
+                for (let i = 0; i < data.length; i++) {
+                    dataCopy[i] = data[i];
+                }
+
+                for (let y = 0; y < height; y++) {
+                    const isSerpentineRow = serpentine && (y % 2 !== 0);
+                    const startX = isSerpentineRow ? width - 1 : 0;
+                    const endX = isSerpentineRow ? -1 : width;
+                    const dir = isSerpentineRow ? -1 : 1;
+                    
+                    for (let x = startX; x !== endX; x += dir) {
+                        const i = (y * width + x) * 4;
+                        const oldColor = [dataCopy[i], dataCopy[i+1], dataCopy[i+2]];
+                        const newColor = findClosestColor(oldColor, palette);
+                        
+                        data[i] = newColor[0]; data[i+1] = newColor[1]; data[i+2] = newColor[2];
+                        
+                        const errR = (oldColor[0] - newColor[0]) * strength;
+                        const errG = (oldColor[1] - newColor[1]) * strength;
+                        const errB = (oldColor[2] - newColor[2]) * strength;
+
+                        // Diffuse the error
+                        if (ditherType === 'floyd-steinberg') {
+                            distributeError(dataCopy, x + (1 * dir), y,     width, errR, errG, errB, 7 / 16);
+                            distributeError(dataCopy, x - (1 * dir), y + 1, width, errR, errG, errB, 3 / 16);
+                            distributeError(dataCopy, x,             y + 1, width, errR, errG, errB, 5 / 16);
+                            distributeError(dataCopy, x + (1 * dir), y + 1, width, errR, errG, errB, 1 / 16);
+                        } else if (ditherType === 'stucki') {
+                            distributeError(dataCopy, x + (1 * dir), y,     width, errR, errG, errB, 8 / 42);
+                            distributeError(dataCopy, x + (2 * dir), y,     width, errR, errG, errB, 4 / 42);
+                            distributeError(dataCopy, x - (2 * dir), y + 1, width, errR, errG, errB, 2 / 42);
+                            distributeError(dataCopy, x - (1 * dir), y + 1, width, errR, errG, errB, 4 / 42);
+                            distributeError(dataCopy, x,             y + 1, width, errR, errG, errB, 8 / 42);
+                            distributeError(dataCopy, x + (1 * dir), y + 1, width, errR, errG, errB, 4 / 42);
+                            distributeError(dataCopy, x + (2 * dir), y + 1, width, errR, errG, errB, 2 / 42);
+                            distributeError(dataCopy, x - (1 * dir), y + 2, width, errR, errG, errB, 1 / 42);
+                            distributeError(dataCopy, x,             y + 2, width, errR, errG, errB, 2 / 42);
+                            distributeError(dataCopy, x + (1 * dir), y + 2, width, errR, errG, errB, 1 / 42);
+                        } else if (ditherType === 'atkinson') {
+                            distributeError(dataCopy, x + (1 * dir), y,     width, errR, errG, errB, 1 / 8);
+                            distributeError(dataCopy, x + (2 * dir), y,     width, errR, errG, errB, 1 / 8);
+                            distributeError(dataCopy, x - (1 * dir), y + 1, width, errR, errG, errB, 1 / 8);
+                            distributeError(dataCopy, x,             y + 1, width, errR, errG, errB, 1 / 8);
+                            distributeError(dataCopy, x + (1 * dir), y + 1, width, errR, errG, errB, 1 / 8);
+                            distributeError(dataCopy, x,             y + 2, width, errR, errG, errB, 1 / 8);
+                        } else if (ditherType === 'jarvis-judice-ninke') {
+                            distributeError(dataCopy, x + (1 * dir), y,     width, errR, errG, errB, 7 / 48);
+                            distributeError(dataCopy, x + (2 * dir), y,     width, errR, errG, errB, 5 / 48);
+                            distributeError(dataCopy, x - (2 * dir), y + 1, width, errR, errG, errB, 3 / 48);
+                            distributeError(dataCopy, x - (1 * dir), y + 1, width, errR, errG, errB, 5 / 48);
+                            distributeError(dataCopy, x,             y + 1, width, errR, errG, errB, 7 / 48);
+                            distributeError(dataCopy, x + (1 * dir), y + 1, width, errR, errG, errB, 5 / 48);
+                            distributeError(dataCopy, x + (2 * dir), y + 1, width, errR, errG, errB, 3 / 48);
+                            distributeError(dataCopy, x - (2 * dir), y + 2, width, errR, errG, errB, 1 / 48);
+                            distributeError(dataCopy, x - (1 * dir), y + 2, width, errR, errG, errB, 3 / 48);
+                            distributeError(dataCopy, x,             y + 2, width, errR, errG, errB, 5 / 48);
+                            distributeError(dataCopy, x + (1 * dir), y + 2, width, errR, errG, errB, 3 / 48);
+                            distributeError(dataCopy, x + (2 * dir), y + 2, width, errR, errG, errB, 1 / 48);
+                        } else if (ditherType === 'burkes') {
+                            distributeError(dataCopy, x + (1 * dir), y,     width, errR, errG, errB, 8 / 32);
+                            distributeError(dataCopy, x + (2 * dir), y,     width, errR, errG, errB, 4 / 32);
+                            distributeError(dataCopy, x - (2 * dir), y + 1, width, errR, errG, errB, 2 / 32);
+                            distributeError(dataCopy, x - (1 * dir), y + 1, width, errR, errG, errB, 4 / 32);
+                            distributeError(dataCopy, x,             y + 1, width, errR, errG, errB, 8 / 32);
+                            distributeError(dataCopy, x + (1 * dir), y + 1, width, errR, errG, errB, 4 / 32);
+                            distributeError(dataCopy, x + (2 * dir), y + 1, width, errR, errG, errB, 2 / 32);
+                        } else if (ditherType === 'sierra-2') {
+                            distributeError(dataCopy, x + (1 * dir), y,     width, errR, errG, errB, 4 / 16);
+                            distributeError(dataCopy, x + (2 * dir), y,     width, errR, errG, errB, 3 / 16);
+                            distributeError(dataCopy, x - (2 * dir), y + 1, width, errR, errG, errB, 1 / 16);
+                            distributeError(dataCopy, x - (1 * dir), y + 1, width, errR, errG, errB, 2 / 16);
+                            distributeError(dataCopy, x,             y + 1, width, errR, errG, errB, 3 / 16);
+                            distributeError(dataCopy, x + (1 * dir), y + 1, width, errR, errG, errB, 2 / 16);
+                            distributeError(dataCopy, x + (2 * dir), y + 1, width, errR, errG, errB, 1 / 16);
+                        }
+                    }
+                }
+            }
+            
+            function distributeError(data, x, y, width, errR, errG, errB, factor) {
+                if (x < 0 || x >= width || y < 0 || y >= data.length / (width * 4)) return;
+                const i = (y * width + x) * 4;
+                data[i] += errR * factor;
+                data[i+1] += errG * factor;
+                data[i+2] += errB * factor;
+            }
+
+            function applyOrderedDither(imageData, palette, mWidth, mHeight, bayerIntensity) {
+                if (!palette) return;
+                
+                const data = imageData.data;
+                const width = imageData.width;
+                const height = imageData.height;
+                const mSize = Math.min(mWidth, mHeight);
+                let bayerMatrix = BAYER_MATRICES[2];
+                let n = 2;
+                if (mSize >= 8) {
+                    bayerMatrix = BAYER_MATRICES[8]; n = 8;
+                } else if (mSize >= 4) {
+                    bayerMatrix = BAYER_MATRICES[4]; n = 4;
+                }
+                
+                const factor = 1 / (n * n) - 0.5; // From 0..n*n-1 to -0.5..0.5
+                const spread = bayerIntensity;
+
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        const i = (y * width + x) * 4;
+                        const threshold = bayerMatrix[y % n][x % n] * factor;
+                        
+                        const r = data[i] + threshold * spread;
+                        const g = data[i+1] + threshold * spread;
+                        const b = data[i+2] + threshold * spread;
+
+                        const newColor = findClosestColor([r, g, b], palette);
+                        data[i] = newColor[0]; data[i+1] = newColor[1]; data[i+2] = newColor[2];
+                    }
+                }
+            }
+
+            // --- Helper Functions ---
+            
+            function findClosestColor(color, palette) {
+                let minDistance = Infinity;
+                let closestColor = palette[0];
+                for (const paletteColor of palette) {
+                    const distance = colorDistance(color, paletteColor);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestColor = paletteColor;
+                    }
+                }
+                return closestColor;
+            }
+
+            function colorDistance(c1, c2) {
+                // Weighted RGB distance for better perceptual accuracy
+                const dR = c1[0] - c2[0];
+                const dG = c1[1] - c2[1];
+                const dB = c1[2] - c2[2];
+                return (dR * dR * 0.299) + (dG * dG * 0.587) + (dB * dB * 0.114);
+            }
+
+            // --- Initial UI Setup ---
+            handleDitherTypeChange();
+            adjustmentControls.style.display = 'flex'; // Always show adjustments
+            expertControls.forEach(el => el.style.display = 'none'); // Hide expert on load
+        });
+    </script>
+</body>
+</html>
